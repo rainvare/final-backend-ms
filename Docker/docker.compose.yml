@@ -1,0 +1,95 @@
+version: '1.0'
+ports:
+  - 3306:3306
+
+environment:
+  - MYSQL_DATABASE=Integrador
+  - MYSQL_USER=root
+  - MYSQL_PASSWORD=root
+  - MYSQL_ROOT_PASSWORD=root
+
+services:
+  mongodb:
+    image: mongo:4.4.2
+    container_name: "mongodb"
+    environment:
+    - MONGO_INITDB_DATABASE=admin
+    - MONGO_INITDB_ROOT_USERNAME=root
+    - MONGO_INITDB_ROOT_PASSWORD=root
+    ports:
+      - "27017:27017"
+
+  zipkin-service:
+    image: openzipkin/zipkin:2
+    container_name: zipkin-service
+    ports:
+      - 9411:9411
+
+  rabbitmq-service:
+    image: rabbitmq:3-management
+    container_name: rabbitmq-service
+    ports:
+      - 5672:5672
+      - 15672:15672
+
+  eureka-server:
+    image: eurekaServer
+    build: eurekaServer
+    container_name: eurekaServer
+    depends_on:
+      - zipkin-service
+      - mongodb
+    ports:
+      - 8761:8761
+    restart: always
+
+  config-server:
+    image: configServer
+    build: configServer
+    container_name: configServer
+    depends_on:
+      - eurekaServer
+    ports:
+      - 8888:8888
+    restart: always
+
+  movie-service:
+    image: api-movie
+    build: api-movie
+    container_name: api-movie
+    depends_on:
+      - configServer
+    ports:
+      - 8001:8001
+    restart: always
+
+  catalog-service:
+    image: api-catalog
+    build: api-catalog
+    container_name: api-catalog
+    depends_on:
+      - configServer
+      - api-movie
+    ports:
+      - 8002:8002
+    restart: always
+
+  serie-service:
+    image: api-serie
+    build: api-serie
+    container_name: api-serie
+    depends_on:
+      - configServer
+    ports:
+      - 8003:8003
+    restart: always
+
+  api-gateway:
+    image: gateway
+    build: gateway
+    container_name: gateway
+    depends_on:
+      - api-catalog
+    ports:
+      - 8080:8080
+    restart: always
